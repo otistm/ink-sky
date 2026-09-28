@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ink Sky: land anywhere, name what you find, get trophies</title>
+<meta name="description" content="A minimal ink-drawn space exploration game. Land on planets nobody has seen, name the creatures, and warp star to star to the core.">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ink Sky">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ink Sky">
+<meta property="og:title" content="Ink Sky">
+<meta property="og:description" content="Land anywhere. Name what you find. Get trophies.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,900&family=Figtree:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#fff;--ink:#000;--soft:#5c5c5c;--display:"Fraunces",Georgia,serif;--ui:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:light;box-sizing:border-box}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#fff;--ink:#000;--soft:#5c5c5c}}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:var(--ui)}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+main{position:relative;z-index:1;min-height:100vh;min-height:100dvh;display:grid;place-items:end center;align-content:end;padding:24px 16px calc(env(safe-area-inset-bottom,0px) + 18px)}
+@media (min-aspect-ratio:1/1){main{place-items:center end;align-content:center;padding-right:6vw}}
+.card{width:min(420px,100%);background:var(--paper);border:2.5px solid var(--ink);border-radius:26px;box-shadow:7px 8px 0 var(--ink);padding:28px 24px 22px;text-align:center;
+  animation:in .8s cubic-bezier(.3,.7,.3,1) both .2s}
+@keyframes in{0%{opacity:0;transform:translateY(60px) scale(.8,1.2)}55%{opacity:1;transform:translateY(-8px) scale(1.04,.96)}78%{transform:translateY(2px) scale(.99,1.01)}100%{transform:none}}
+h1{font-family:var(--display);font-style:italic;font-weight:900;font-size:clamp(50px,14vw,74px);line-height:.95;margin:0;letter-spacing:-.01em}
+.tag{font-weight:800;font-size:17px;margin:12px 0 22px}
+.play{display:block;width:100%;background:var(--ink);color:var(--paper);text-decoration:none;border-radius:18px;padding:17px 20px;font-family:var(--display);font-style:italic;font-weight:900;font-size:30px;
+  border:2.5px solid var(--ink);transition:transform .22s cubic-bezier(.34,1.56,.64,1)}
+.play:hover{transform:translateY(-2px)}
+.play:active{transform:scale(1.04,.9)}
+.play:focus-visible{outline:3px solid var(--ink);outline-offset:4px}
+.feats{list-style:none;padding:0;margin:20px 0 4px;display:grid;gap:10px;text-align:left}
+.feats li{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:center;font-weight:600;font-size:14.5px;line-height:1.35}
+.feats svg{width:30px;height:30px}
+.feats b{font-weight:800}
+footer{margin-top:12px;font-size:12px;font-weight:600;color:var(--soft)}
+@media (prefers-reduced-motion:reduce){.card{animation:none}}
+</style>
+</head>
+<body>
+<canvas id="c" aria-hidden="true"></canvas>
+<main>
+  <div class="card">
+    <h1>Ink Sky</h1>
+    <p class="tag">Land anywhere. Name what you find. Get trophies.</p>
+    <a class="play" href="/play/">Play</a>
+    <ul class="feats">
+      <li><svg viewBox="0 0 40 40" aria-hidden="true"><g fill="none" stroke="#000" stroke-width="2.4" stroke-linecap="round"><path d="M5 26c3-5 9-8 15-8s12 3 15 8" /><circle cx="20" cy="20" r="10" fill="#fff"/><path d="M4 23c5 5 27 5 32 0" stroke-width="3"/></g></svg><span><b>Every planet is new.</b> Its weather, plants and creatures are made up the moment you land.</span></li>
+      <li><svg viewBox="0 0 40 40" aria-hidden="true"><g fill="none" stroke="#000" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="18" cy="24" rx="12" ry="7" fill="#fff"/><circle cx="31" cy="15" r="5.5" fill="#fff"/><circle cx="32.5" cy="14.5" r="2" fill="#000" stroke="none"/><path d="M12 30v6M24 30v6"/></g></svg><span><b>Name what lives there.</b> Scan every species on a planet for a suit upgrade.</span></li>
+      <li><svg viewBox="0 0 40 44" aria-hidden="true"><g stroke="#000" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M10 7H5c0 6 3 9 6.5 9.5M30 7h5c0 6-3 9-6.5 9.5" fill="none"/><path d="M10 4h20v9c0 7-4.5 11-10 11S10 20 10 13z" fill="#000"/><path d="M17 24h6v6h-6z" fill="#fff"/><path d="M11 31h18v6H11z" fill="#000"/></g></svg><span><b>Three journeys.</b> Warp star to star and reach the core for a trophy.</span></li>
+    </ul>
+  </div>
+  <footer>Best on a phone, held upright.</footer>
+</main>
+<script>
+if('serviceWorker' in navigator&&location.protocol==='https:') navigator.serviceWorker.register('/sw.js').catch(()=>{});
+/* ---------- a ringed ink planet turning, a moon going round, and a little ship crossing the sky ---------- */
+(()=>{
+  const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+  const still=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W=0,H=0,D=1;
+  function resize(){ D=Math.min(2,devicePixelRatio||1); W=innerWidth; H=innerHeight; cv.width=W*D; cv.height=H*D; }
+  addEventListener('resize',resize); resize();
+  let seed=7; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+  const STARS=Array.from({length:70},()=>[rnd(),rnd(),.6+rnd()*1.1,.3+rnd()*.45]);
+  const SPARK=Array.from({length:8},()=>[rnd(),rnd(),3+rnd()*3,rnd()*6]);
+  function planet(R,t,ring,tilt,bands){
+    const lw=2.4, half=back=>{ ctx.save(); ctx.rotate(tilt); ctx.beginPath(); ctx.ellipse(0,0,R*1.75,R*.42,0,back?Math.PI:0,back?Math.PI*2:Math.PI);
+      ctx.lineWidth=lw*2.4; ctx.strokeStyle='#000'; ctx.stroke(); ctx.lineWidth=lw*.9; ctx.strokeStyle='#fff'; ctx.stroke(); ctx.restore(); };
+    if(ring) half(true);
+    ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(lw*1.6,lw*1.9,R,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0,0,R,0,Math.PI*2); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.arc(0,0,R,0,Math.PI*2); ctx.clip(); ctx.strokeStyle='#000'; ctx.lineWidth=lw*.7;
+    if(bands) for(let i=-2;i<=2;i++){ const y=i*R*.32+Math.sin(t*.4+i)*R*.03; ctx.beginPath(); ctx.moveTo(-R,y); ctx.quadraticCurveTo(0,y+R*.12,R,y); ctx.stroke(); }
+    else { ctx.fillStyle='#000'; for(let i=0;i<14;i++){ const x=((i*37+t*6)%(R*2))-R, y=((i*53)%(R*2))-R; ctx.beginPath(); ctx.arc(x,y,lw*.45,0,Math.PI*2); ctx.fill(); } }
+    ctx.beginPath(); ctx.rect(-R*2,-R*2,R*4,R*4); ctx.arc(-R*.32,-R*.3,R*1.08,0,Math.PI*2,true); ctx.clip();
+    ctx.lineWidth=lw*.6; ctx.beginPath(); for(let x=-R*2;x<R*2;x+=lw*2.2){ ctx.moveTo(x,R); ctx.lineTo(x+R*2,-R); } ctx.stroke(); ctx.restore();
+    ctx.beginPath(); ctx.arc(0,0,R,0,Math.PI*2); ctx.lineWidth=lw; ctx.strokeStyle='#000'; ctx.stroke();
+    if(ring) half(false);
+  }
+  function ship(x,y,s){
+    ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineJoin='round'; ctx.lineCap='round'; ctx.lineWidth=2.2/s;
+    const body=()=>{ ctx.beginPath(); ctx.moveTo(-2.5,-1.3); ctx.quadraticCurveTo(-2.6,-2.3,-1.4,-2.35); ctx.lineTo(1.1,-2.25); ctx.quadraticCurveTo(2.9,-2,2.6,-1.35); ctx.quadraticCurveTo(2.2,-.85,.9,-.85); ctx.lineTo(-1.8,-.85); ctx.quadraticCurveTo(-2.5,-.9,-2.5,-1.3); ctx.closePath(); };
+    for(const s2 of [-.75,.75]){ const f=.7+Math.random()*.5; ctx.beginPath(); ctx.moveTo(-2.7,-1.7+s2*.3); ctx.lineTo(-2.7-f*1.6,-1.45+s2*.25); ctx.lineTo(-2.7,-1.2+s2*.3); ctx.fillStyle='#000'; ctx.fill(); }
+    ctx.save(); ctx.translate(.22,.26); body(); ctx.fillStyle='#000'; ctx.fill(); ctx.restore();
+    body(); ctx.fillStyle='#fff'; ctx.fill(); ctx.strokeStyle='#000'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(.25,-2.25); ctx.quadraticCurveTo(.95,-3.05,1.85,-2.12); ctx.closePath(); ctx.fillStyle='#000'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-2.3,-1.55); ctx.lineTo(2.1,-1.55); ctx.stroke();
+    ctx.restore();
+  }
+  function frame(t){
+    const s=t/1000;
+    ctx.setTransform(D,0,0,D,0,0); ctx.clearRect(0,0,W,H); ctx.fillStyle='#000'; ctx.strokeStyle='#000';
+    STARS.forEach(([x,y,r,a])=>{ ctx.globalAlpha=a; ctx.beginPath(); ctx.arc(x*W,y*H,r,0,Math.PI*2); ctx.fill(); });
+    ctx.globalAlpha=1; ctx.lineWidth=1.4; ctx.lineCap='round';
+    SPARK.forEach(([x,y,k,p])=>{ const kk=k*(still?1:.6+.4*Math.sin(s*1.3+p)); ctx.beginPath(); ctx.moveTo(x*W-kk,y*H); ctx.lineTo(x*W+kk,y*H); ctx.moveTo(x*W,y*H-kk); ctx.lineTo(x*W,y*H+kk); ctx.stroke(); });
+    const land=W>H, cx=land?W*.3:W/2, cy=land?H*.5:H*.27, R=Math.min(land?H*.2:W*.22,130);
+    const ma=s*.4, mx=cx+Math.cos(ma)*R*2.1, my=cy+Math.sin(ma)*R*.7;
+    const moon=()=>{ ctx.save(); ctx.translate(mx,my); planet(R*.2,s,false,0,false); ctx.restore(); };
+    if(Math.sin(ma)<0) moon();
+    ctx.save(); ctx.translate(cx,cy+(still?0:Math.sin(s*.8)*4)); planet(R,s,true,-.28,true); ctx.restore();
+    if(Math.sin(ma)>=0) moon();
+    const u=(s%12)/12; if(!still&&u<.55) ship(-60+(W+120)*u/.55, cy+R*1.3-u*50, 6);
+    if(!still) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

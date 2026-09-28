@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ink Sky: land anywhere, name what you find, get trophies</title>
+<meta name="theme-color" content="#ffffff">
+<meta name="description" content="Land anywhere. Name what you find. Get trophies.">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ink Sky">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,800;0,9..144,900;1,9..144,900&family=Figtree:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<canvas id="c" aria-hidden="true"></canvas>
+
+<section id="title" class="screen on">
+  <div class="panel titlep">
+    <h1 class="logo">Ink Sky</h1>
+    <p class="tag">Land anywhere. Name what you find. Get trophies.</p>
+    <div class="events" id="jlist"></div>
+    <div class="sub" id="lifetime"></div>
+    <button class="linkbtn" id="howBtn">How to play</button>
+    <div class="foot-note">Best on a phone, held upright.</div>
+    <div class="ver" id="ver"></div>
+  </div>
+</section>
+
+<!-- on a planet -->
+<div class="hud" id="hud" hidden>
+  <div class="htop">
+    <div class="hl">
+      <div class="pn"><span class="wx" id="wxic"></span><span class="hn halo" id="pname"></span></div>
+      <div class="sub halo" id="psub"></div>
+    </div>
+    <button id="pause" class="pausebtn" type="button" aria-label="Pause"></button>
+  </div>
+  <div class="meters" id="meters">
+    <div class="meter"><div class="ml halo"><span>Shield</span><b id="shieldN"></b></div><div class="bar hatch"><i id="shieldBar"></i></div></div>
+    <div class="meter"><div class="ml halo"><span>Life</span><b id="lifeN"></b></div><div class="bar"><i id="lifeBar"></i></div></div>
+    <div class="alert" id="alert" aria-label="Watchers"></div>
+  </div>
+  <div class="hbot">
+    <button class="btn board" id="boardBtn" hidden>Board your ship</button>
+    <div class="chips">
+      <button class="chip" id="chip-carbon" type="button"><span class="ci"></span><b id="n-carbon">0</b><small>Carbon</small></button>
+      <button class="chip" id="chip-sodium" type="button"><span class="ci"></span><b id="n-sodium">0</b><small>Sodium</small></button>
+      <button class="chip" id="chip-ferrite" type="button"><span class="ci"></span><b id="n-ferrite">0</b><small>Ferrite</small></button>
+      <button class="chip" id="chip-shard" type="button"><span class="ci"></span><b id="n-shard">0</b><small>Shards</small></button>
+      <button class="scanb" id="scanBtn" type="button" aria-label="Scan"><svg class="ring" viewBox="0 0 52 52" aria-hidden="true"><circle id="scanRing" cx="26" cy="26" r="24" fill="none" stroke="#fff" stroke-width="3.5" stroke-dasharray="151" stroke-dashoffset="0" transform="rotate(-90 26 26)"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<!-- in orbit -->
+<div class="hud" id="shud" hidden>
+  <div class="htop">
+    <div class="hl"><div class="hn" id="sname"></div><div class="sub" id="ssub"></div></div>
+    <button id="pause2" class="pausebtn" type="button" aria-label="Pause"></button>
+  </div>
+  <div class="prog left" id="spips"></div>
+  <div class="hbot">
+    <div class="wallet3">
+      <div><span id="icFuel"></span><b id="sFuel">0</b><small>Fuel</small></div>
+      <div><span id="icCells"></span><b id="sCells">0</b><small>Warp cells</small></div>
+      <div><span id="icShards"></span><b id="sShards">0</b><small>Shards</small></div>
+    </div>
+    <div class="twobtn"><button class="btn ghost" id="shipBtn">Your ship</button><button class="btn" id="warpBtn">Warp<small id="warpSub"></small></button></div>
+  </div>
+</div>
+
+<div id="fx" aria-hidden="true"></div>
+<div id="disc" class="disc" role="status"></div>
+<div id="hint" class="hintb" role="status"></div>
+<div id="callout" class="callout" aria-live="polite"></div>
+<div class="veil" id="veil"><div class="panel" id="sheet"></div></div>
+
+<!-- Order matters: each script can only use what the scripts above it define while loading. main.js is always last. -->
+<script src="js/config.js"></script>
+<script src="js/core.js"></script>
+<script src="js/gen.js"></script>
+<script src="js/art.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/state.js"></script>
+<script src="js/surface.js"></script>
+<script src="js/space.js"></script>
+<script src="js/screens.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

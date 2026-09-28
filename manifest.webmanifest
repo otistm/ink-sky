@@ -1,0 +1,14 @@
+{
+  "name": "Ink Sky",
+  "short_name": "Ink Sky",
+  "description": "Land anywhere. Name what you find. Get trophies.",
+  "start_url": "/play/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
