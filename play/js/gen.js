@@ -111,6 +111,8 @@ function makePlanet(seed, si, k, J) {
   const watch = first ? 1 : Math.min(3, Math.floor(r() * 4 * Math.min(1, J.watch * .8 + si * .08)));
   const nf = first ? 3 : wx === 'calm' ? ri(r, 3, 4) : wx === 'stormy' ? ri(r, 2, 4) : ri(r, 1, 3);
   const fauna = []; for (let i = 0; i < nf; i++) fauna.push(makeSpecies(r, i));
+  // with more than one species, the last is rare: a lone animal living far from the landing spot
+  if (nf >= 2) Object.assign(fauna[nf - 1], { rare: true, count: 1 });
   const flora = [makeFlora(r)]; if (r() < .6) flora.push(makeFlora(r));
   return {
     key: si + '-' + k, si, k, seed: seed + ':' + si + ':' + k,
@@ -142,7 +144,7 @@ const TRADES = [
 const TRADE_STOCK = 3, STATION_UP_COST = 60;
 function makeSystem(seed, i, J) {
   const r = RNG(seed, 'sys', i);
-  const name = nameGen(r, 2, 3), n = i === 0 ? 3 : ri(r, 3, 4);
+  const name = nameGen(r, 2, 3), n = i === 0 && !J.gal ? 3 : ri(r, 3, 4) + (J.gal ? 1 : 0); // new galaxies have more planets
   const planets = []; for (let k = 0; k < n; k++) planets.push(makePlanet(seed, i, k, J));
   // spread the planets round their orbits so they don't start bunched together
   const a0 = r() * TAU; planets.forEach((p, k) => { p.look.a0 = a0 + k * 2.4; });
@@ -153,7 +155,9 @@ function makeSystem(seed, i, J) {
   while (least() < WARP_COST + 12) planets.reduce((a, b) => b.spires < a.spires ? b : a).spires += 2;
   const deals = TRADES.slice(), trades = []; while (trades.length < 3) trades.push(deals.splice(Math.floor(r() * deals.length), 1)[0]);
   const station = { name: nameGen(r, 2, 2) + ' Post', ring: ri(r, 1, n), trades, up: UPGRADES[Math.floor(r() * UPGRADES.length)].id };
-  return { i, name, planets, station, lore: LORE[(hash(seed) + i * 7) % LORE.length], twin: r() < .25 };
+  // one world at every star hides a star chart
+  const chart = Math.floor(r() * planets.length); planets[chart].hasChart = true;
+  return { i, name, planets, station, chart, lore: LORE[(hash(seed) + i * 7) % LORE.length], twin: r() < .25 };
 }
 
 // Ground marks for each kind of weather (drawn flat, you walk over them)
@@ -162,7 +166,8 @@ const DECO = {
   scorched: ['dune', 'dune', 'bones', 'pebbles', 'crater'], frozen: ['drift', 'drift', 'ice', 'pebbles', 'patch'],
   toxic: ['goo', 'spores', 'spores', 'pebbles', 'patch'], airless: ['crater', 'crater', 'pebbles', 'dune'],
 };
-const POI_NAME = { wreck: 'Wreck', pod: 'Supply pod', monolith: 'Monolith', cave: 'Cave' };
+const POI_NAME = { wreck: 'Wreck', pod: 'Supply pod', monolith: 'Monolith', cave: 'Cave', chart: 'Star chart' };
+const CHART_ID = 2000, CHART_SENSE = 25; // the chart's id in G.dep, and how close you must be for the scanner to tag it
 
 // Where everything stands on a planet. The ship lands at 0,0; y grows toward the bottom of the screen.
 // blocks are things you walk round (boulders, cliffs, big trees, pools); pois are places to find.
@@ -232,7 +237,14 @@ function planetLayout(pl) {
       pois.push({ id: 1000 + i, k, x, y, sd: r() * 1e9 | 0 }); return;
     }
   });
-  const herds = pl.fauna.map((sp, i) => { let [x, y] = spot(10, R - 10); for (let t = 0; t < 10 && blocked(x, y, 2); t++) [x, y] = spot(10, R - 10); return { sp: i, x, y }; });
+  // the hidden star chart: far out, somewhere clear
+  if (pl.hasChart) for (let t = 0; t < 120; t++) {
+    const [x, y] = spot(40, R - 5);
+    if (t < 100 && (blocked(x, y, 1.5) || pois.some(p => Math.hypot(p.x - x, p.y - y) < 8))) continue;
+    if (blocked(x, y, .5)) continue;
+    pois.push({ id: CHART_ID, k: 'chart', x, y, sd: r() * 1e9 | 0 }); break;
+  }
+  const herds = pl.fauna.map((sp, i) => { const a = sp.rare ? 45 : 10; let [x, y] = spot(a, R - 10); for (let t = 0; t < 10 && blocked(x, y, 2); t++) [x, y] = spot(a, R - 10); return { sp: i, x, y }; });
   return { objs, deco, herds, blocks, pois };
 }
 // how tall each kind of thing stands, in metres, before its own size
@@ -242,3 +254,35 @@ const MINE_RES = { plant: 'carbon', sodium: 'sodium', rock: 'ferrite', shard: 's
 const MINE_YIELD = { plant: [6, 10], sodium: [5, 8], rock: [6, 10], shard: [6, 10] };
 const MINE_ALERT = { plant: .05, sodium: .05, rock: .09, shard: .34 };
 const WATCH_F = [0, .6, 1, 1.5];
+
+// Each planet's goals: things to do there, worked out from what's on it. Finish them all to chart the planet.
+// need is how many; progress is counted in surface.js (goalHave).
+const HARVEST = { calm: 'carbon', stormy: 'carbon', toxic: 'ferrite', scorched: 'sodium', frozen: 'sodium', airless: 'ferrite' };
+function planetGoals(pl, L) {
+  const r = RNG(pl.seed, 'goals'), goals = [];
+  if (pl.fauna.length) goals.push({ id: 'species', need: pl.fauna.length, text: `Name all ${plural(pl.fauna.length, 'species', 'species')}`, note: pl.fauna.some(s => s.rare) ? 'One is rare and lives far from your ship.' : '' });
+  const finds = L.pois.filter(o => o.k !== 'cave' && o.k !== 'chart').length;
+  if (finds) goals.push({ id: 'finds', need: finds, text: `Search ${finds === 1 ? 'the wreck, pod or monolith' : `all ${finds} wrecks, pods and monoliths`}`, note: 'The scanner tags them.' });
+  const spires = L.objs.filter(o => o.k === 'shard').length;
+  if (spires) goals.push({ id: 'spire', need: Math.min(3, spires), text: `Mine ${plural(Math.min(3, spires), 'black shard spire')}`, note: '' });
+  const extra = [];
+  if (L.blocks.some(b => b.k === 'mesa')) extra.push({ id: 'cliff', need: 1, text: 'Jetpack over a cliff', note: 'Press and hold to fly.' });
+  if (L.pois.some(o => o.k === 'cave')) extra.push({ id: 'cave', need: 1, text: 'Shelter in a cave', note: '' });
+  extra.push({ id: 'far', need: 1, text: 'Reach the edge of the map', note: 'Where the ground turns rough.' });
+  const res = HARVEST[pl.wx]; extra.push({ id: 'harvest', res, need: 30, text: `Gather 30 ${RES[res].name.toLowerCase()} here`, note: '' });
+  if (pl.watch >= 2) extra.push({ id: 'watcher', need: 1, text: 'Shoot down a watcher', note: 'Mine greedily and they come.' });
+  for (let i = pl.fauna.length ? 1 : 2; i > 0 && extra.length; i--) goals.push(extra.splice(Math.floor(r() * extra.length), 1)[0]);
+  return goals;
+}
+
+// Find every star chart on a journey and the core opens the way to a new galaxy: an extra star, more planets
+// per star, and a little harsher. gal 0 is the journey itself.
+const GALAXY_KIND = ['Spiral', 'Cloud', 'Wheel', 'Veil', 'Drift'];
+const _gal = {};
+function galaxyOf(j, gal, seed) {
+  const b = JOURNEYS[j]; if (!gal) return b;
+  const key = j + ':' + gal + ':' + seed; if (_gal[key]) return _gal[key];
+  const r = RNG(seed, 'galaxy');
+  return (_gal[key] = Object.assign({}, b, { name: 'The ' + nameGen(r, 2, 2) + ' ' + pick(r, GALAXY_KIND), stars: Math.min(8, b.stars + 1),
+    harsh: b.harsh * (1 + .15 * gal), watch: b.watch * (1 + .1 * gal), gal }));
+}

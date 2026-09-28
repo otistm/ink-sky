@@ -20,21 +20,23 @@ function newRun(j) {
     v: 1, j, seed: String((Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0),
     sys: 0, at: 0, where: 'surface', crash: true,
     inv: { carbon: 0, sodium: 0, ferrite: 0, shard: 0 }, fuel: 0, cells: 0, life: 100, shield: 100,
-    up: {}, dep: {}, scanned: {}, seen: {}, px: null, py: null, trade: {}, dock: false,
+    up: {}, dep: {}, scanned: {}, seen: {}, px: null, py: null, trade: {}, dock: false, goals: {}, charted: {}, gal: 0, charts: [],
     stats: { species: 0, planets: 0, mined: 0, drones: 0 },
   };
 }
 // Snapshots have v:1. If the shape of G changes, bump v and convert older ones here.
 // Fields added after 0.1.0 get their defaults here.
-function loadRun() { const r = loadJSON(RUN_KEY); if (!(r && r.v === 1 && JOURNEYS[r.j])) return null; r.trade = r.trade || {}; r.dock = !!r.dock; return r; }
+function loadRun() { const r = loadJSON(RUN_KEY); if (!(r && r.v === 1 && JOURNEYS[r.j])) return null; r.trade = r.trade || {}; r.dock = !!r.dock; r.goals = r.goals || {}; r.charted = r.charted || {}; r.gal = r.gal || 0; r.charts = r.charts || []; return r; }
 function saveRun() { if (G) writeJSON(RUN_KEY, G); }
 function clearRun() { G = null; try { localStorage.removeItem(RUN_KEY); } catch (e) {} }
 
 const SYS = {};
-function sysOf(i) { const k = G.seed + ':' + i; return SYS[k] || (SYS[k] = makeSystem(G.seed, i, JOURNEYS[G.j])); }
+function sysOf(i) { const k = G.seed + ':' + i; return SYS[k] || (SYS[k] = makeSystem(G.seed, i, J())); }
 const curSys = () => sysOf(G.sys);
 const curPlanet = () => curSys().planets[G.at];
-const J = () => JOURNEYS[G.j];
+// the journey, or the galaxy it has led on to
+const J = () => galaxyOf(G.j, G.gal || 0, G.seed);
+const runJ = r => galaxyOf(r.j, r.gal || 0, r.seed);
 
 const upL = id => (G && G.up[id]) || 0;
 const lifeMax = () => 100 + 25 * upL('suit');

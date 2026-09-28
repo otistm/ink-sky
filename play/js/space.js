@@ -37,7 +37,7 @@ function enterSpace() {
 function hudSpace() {
   const sy = curSys(), last = G.sys + 1 >= J().stars, moons = sy.planets.filter(p => p.moonOf != null).length;
   $('sname').textContent = sy.name;
-  $('ssub').textContent = `Star ${G.sys + 1} of ${J().stars} · ${plural(sy.planets.length - moons, 'planet')}${moons ? ', ' + plural(moons, 'moon') : ''}`;
+  $('ssub').textContent = `Star ${G.sys + 1} of ${J().stars} · ${plural(sy.planets.length - moons, 'planet')}${moons ? ', ' + plural(moons, 'moon') : ''} · star charts ${G.charts.length}/${J().stars}`;
   $('spips').innerHTML = pipsInner();
   $('sFuel').textContent = Math.round(G.fuel); $('sCells').textContent = G.cells; $('sShards').textContent = G.inv.shard;
   $('warpBtn').classList.toggle('dim', G.cells < 1);
@@ -72,10 +72,10 @@ function planetSheet(k) {
     <div class="board">
       <div class="row"><div class="nm">${w.name}<small>${w.desc}</small></div><span class="ic">${ICON[pl.wx]}</span></div>
       <div class="row"><div class="nm">Watchers: ${WATCH[pl.watch].toLowerCase()}<small>${watchDesc}</small></div><span class="ic">${ICON.eye}</span></div>
-      <div class="row">${lifeRow}<span class="ic">${ICON.species}</span></div>
-      <div class="row"><div class="nm">Places to find<small>${finds ? finds[0].toUpperCase() + finds.slice(1) : 'Nothing much'}${seen && lookable ? ` · ${looked} of ${lookable} looked at` : ''}</small></div><span class="ic">${ICON.wreck}</span></div>
-      <div class="row"><div class="nm">Warp shards<small>${pl.spires >= 5 ? 'Plenty of black spires' : pl.spires >= 3 ? 'A few black spires' : 'Hardly any spires'}</small></div><span class="ic">${ICON.shard}</span></div>
+      <div class="row"><div class="nm">Places to find<small>${finds ? finds[0].toUpperCase() + finds.slice(1) : 'Nothing much'}</small></div><span class="ic">${ICON.wreck}</span></div>
     </div>
+    <p class="evn" style="text-align:left">${G.charted[pl.key] ? 'Charted ✓' : 'Goals to chart it'}</p>
+    <div class="board">${goalRows(pl, planetGoals(pl, L))}</div>
     <button class="btn" id="landBtn">${k === G.at && !G.dock ? 'Land again' : 'Fly there and land'}</button><button class="btn ghost" id="stayBtn">Stay in orbit</button>`);
   $('landBtn').onclick = () => { closeSheet(); flyTo(k); };
   $('stayBtn').onclick = closeSheet;
@@ -101,7 +101,7 @@ function spaceStep(dt) {
     if (f.t >= 1 && f.k === 'station') { SPC.fly = null; G.dock = true; saveRun(); stationSheet(); }
     else if (f.t >= 1 && !S.wipe) { const p = spaceLayout(S.t)[f.k]; G.at = f.k; G.dock = false; f.t = 1; wipe(p.x, p.y, () => { SPC.fly = null; landOn(f.k, true); }); }
   }
-  if (S.mode === 'warp' && SPC.warp) { SPC.warp.t += dt; if (SPC.warp.t > 2.2 && !SPC.warp.done) { SPC.warp.done = true; arrive(); } }
+  if (S.mode === 'warp' && SPC.warp) { const long = SPC.warp.galaxy ? 3.4 : 2.2; SPC.warp.t += dt; if (SPC.warp.t > long && !SPC.warp.done) { SPC.warp.done = true; if (SPC.warp.galaxy) { enterSpace(); starSheet(); } else arrive(); } }
   if (S.mode === 'core') SPC.core += dt;
 }
 
@@ -141,19 +141,15 @@ function spaceDraw(t) {
   const back = L.filter(p => p.y < cy).sort((a, b) => a.y - b.y), front = L.filter(p => p.y >= cy).sort((a, b) => a.y - b.y);
   const planet = p => {
     ctx.save(); ctx.translate(p.x, p.y); drawPlanet(ctx, p.pl, p.R, t, 2.2); ctx.restore();
-    const seen = G.seen[p.pl.key], all = seen && p.pl.fauna.length && namedOn(p.pl) === p.pl.fauna.length;
-    if (p.moon) return; // moons go unlabelled: their planet's label counts them
-    const moons = L.filter(m => m && m.moon && m.par === p).length;
-    const name = p.pl.name + (all ? ' ✓' : ''), note = WEATHER[p.pl.wx].name + (seen ? ` · ${namedOn(p.pl)}/${p.pl.fauna.length}` : '') + (moons ? ` · ${plural(moons, 'moon')}` : '');
-    const f1 = `italic 900 ${Math.round(14 * sc)}px Fraunces, Georgia, serif`, f2 = `700 ${Math.round(11 * sc)}px Figtree, system-ui, sans-serif`;
-    ctx.font = f1; const half = ctx.measureText(name).width / 2 + 6, lx = clamp(p.x, half, W - half); // labels stay on screen
-    ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = '#000'; ctx.fillText(name, lx, p.y + p.R + 7);
-    ctx.font = f2; ctx.fillStyle = '#5c5c5c'; ctx.fillText(note, lx, p.y + p.R + 7 + 16 * sc);
+    // no names on the chart (tap a world for its card); a charted world wears a small solid tick badge
+    if (G.charted[p.pl.key]) {
+      const bx = p.x + p.R * .8, by = p.y - p.R * .8, br = Math.max(6, 7 * sc);
+      ctx.beginPath(); ctx.arc(bx, by, br, 0, TAU); ctx.fillStyle = '#000'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx - br * .45, by); ctx.lineTo(bx - br * .1, by + br * .38); ctx.lineTo(bx + br * .5, by - br * .35); ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.stroke();
+    }
   };
   // the trading station
   const stn = L.station; ctx.save(); ctx.translate(stn.x, stn.y); drawStation(ctx, stn.R, t, 2); ctx.restore();
-  ctx.font = `italic 900 ${Math.round(12 * sc)}px Fraunces, Georgia, serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = '#000';
-  { const nm = sy.station.name, half = ctx.measureText(nm).width / 2 + 6; ctx.fillText(nm, clamp(stn.x, half, W - half), stn.y + stn.R + 8); }
   back.forEach(planet);
   drawSun(cx, cy, 20 * sc, t);
   if (sy.twin) { const a = t * .4; drawSun(cx + Math.cos(a) * 34 * sc, cy + Math.sin(a) * 18 * sc, 8 * sc, t); }
@@ -168,7 +164,7 @@ function spaceDraw(t) {
   } else spaceShip(x, y + Math.sin(t * 2) * 2, 1, sc, 0);
 }
 function warpDraw(t) {
-  const u = clamp(SPC.warp.t / 2.2, 0, 1), cx = W / 2, cy = H / 2, r = RNG('warp'), maxD = Math.hypot(W, H) * .6;
+  const u = clamp(SPC.warp.t / (SPC.warp.galaxy ? 3.4 : 2.2), 0, 1), cx = W / 2, cy = H / 2, r = RNG('warp'), maxD = Math.hypot(W, H) * .6;
   ctx.strokeStyle = '#000'; ctx.lineCap = 'round';
   for (let i = 0; i < 140; i++) {
     const a = r() * TAU, sp = .5 + r(), d0 = r() * maxD, d = (d0 + u * u * 1600 * sp) % maxD, len = 3 + u * u * 240 * sp;

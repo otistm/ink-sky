@@ -55,7 +55,6 @@ function hint(text, ms = 6500) {
   el.textContent = text; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
   hintTO = setTimeout(() => el.classList.remove('on'), ms);
 }
-const plural = (n, w, ws) => n + ' ' + (n === 1 ? w : (ws || w + 's'));
 const ROMAN = ['I', 'II', 'III', 'IV', 'V'];
 
 function resize() {

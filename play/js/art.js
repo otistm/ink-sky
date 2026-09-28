@@ -409,6 +409,19 @@ function drawCave(g, lw, o) {
   g.fillStyle = '#fff'; [[-.6, -1.3, .25], [-.1, -1.45, .35], [.45, -1.32, .22]].forEach(([x, y, l]) => { g.beginPath(); g.moveTo(x - .09, y); g.lineTo(x, y + l); g.lineTo(x + .09, y); g.fill(); });
 }
 
+function drawChart(g, lw, o) {
+  g.save(); g.rotate(-.35);
+  inked(g, lw, () => rrect(g, -.28, -.95, .56, 1.05, .2));
+  g.beginPath(); g.moveTo(-.28, -.72); g.lineTo(.28, -.72); g.lineWidth = lw * .8; g.strokeStyle = '#000'; g.stroke();
+  const star = (x, y, s) => { g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? s * .45 : s; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); g.fillStyle = '#000'; g.fill(); };
+  star(0, -.38, .17);
+  g.restore();
+  // a glint every couple of seconds, for sharp eyes
+  const k = (o.t * .6 + (o.sd % 7) / 7) % 1;
+  if (!o.used && k < .15) { const s = Math.sin(k / .15 * Math.PI) * .35; g.lineWidth = lw * 1.2; g.strokeStyle = '#000'; g.lineCap = 'round'; g.beginPath(); g.moveTo(.2 - s, -1.1); g.lineTo(.2 + s, -1.1); g.moveTo(.2, -1.1 - s); g.lineTo(.2, -1.1 + s); g.stroke(); }
+  g.beginPath(); g.ellipse(0, 0, .55, .14, 0, 0, TAU); g.fillStyle = '#fff'; g.fill(); g.lineWidth = lw; g.strokeStyle = '#000'; g.stroke();
+}
+
 /* ---------- ground details (flat) ---------- */
 function drawStamp(g, lw, d) {
   const r = RNG(d.sd, 'stamp'), s = d.s; g.save(); g.translate(d.x, d.y); g.strokeStyle = '#000'; g.fillStyle = '#000'; g.lineCap = 'round'; g.lineWidth = lw * .8;
@@ -494,6 +507,7 @@ const ICON = {
   station: SV('<circle cx="20" cy="20" r="12" stroke-width="3.5"/><circle cx="20" cy="20" r="5.5" fill="#fff"/><circle cx="20" cy="20" r="2" fill="#000" stroke="none"/><path d="M2 20h7M31 20h7"/>'),
   moon: SV('<circle cx="20" cy="20" r="13" fill="#fff"/><circle cx="15" cy="16" r="3"/><circle cx="24" cy="25" r="4"/><circle cx="25" cy="13" r="1.5"/>'),
   airless: SV('<circle cx="20" cy="20" r="13" fill="#fff"/><circle cx="15" cy="16" r="3"/><circle cx="24" cy="25" r="4"/><circle cx="25" cy="13" r="1.5"/>'),
+  chart: SV('<path d="M20 5l4 9 10 1-7.5 6.5 2.5 10L20 26l-9 5.5 2.5-10L6 15l10-1z" fill="#000"/>'),
   lock: SV('<rect x="9" y="18" width="22" height="17" rx="4" fill="#fff"/><path d="M14 18v-5a6 6 0 0 1 12 0v5"/>'),
 };
 const PAUSE_SVG = '<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="9" y="8" width="5" height="16" rx="1.5" fill="currentColor"/><rect x="18" y="8" width="5" height="16" rx="1.5" fill="currentColor"/></svg>';

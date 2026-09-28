@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0
+- Hidden star charts. Every star hides one on one of its planets or moons: a small canister half-buried far from where you land.
+- The scanner won't tag it from a distance. On the right world it picks up a faint signal and tells you whether it's near or a long way out; once you're within 25 m it shows up. Walk onto it to pick it up.
+- Find every star chart on a journey and the core offers a new trip: travel on to a new galaxy. Your ship, suit upgrades and cargo come with you.
+- New galaxies have an extra star, 4 or 5 planets round each star, and slightly harsher worlds. They hide their own star charts, so you can keep going, galaxy after galaxy.
+- The star pips show a diamond for each star whose chart you've found, and the orbit screen counts your charts.
+- The home screen says which galaxy a saved journey is in, and how many new galaxies you've reached.
+- A star's card now counts its moons separately from its planets.
+
+## 0.4.0
+- No more tapping to mine or scan. Walk up to a rock, plant or crystal and you mine it; walk near a creature you haven't named and you scan it. Tapping something still walks you over to it.
+- Every planet has goals: 3 to 5 things to do there, like naming all its species, searching its wrecks and pods, mining its black spires, and one or two things special to that world (fly over a cliff, shelter in a cave, reach the edge of the map, gather a resource, or shoot down a watcher).
+- The next goal shows under your meters, with a count of how many are done. Tap it to see them all.
+- Finish every goal to chart the planet and pick a suit upgrade. (Before, naming every species gave the upgrade.)
+- On planets with more than one species, one of them is rare: a lone animal living far from your ship.
+- The star chart no longer shows names, so planets aren't covered up. Tap one for its card, which now lists its goals. Charted planets wear a small tick.
+
 ## 0.3.1
 - Tapping a boulder, cliff or big tree walks you up to its near side and stops there. Before, you'd walk into it and jitter left and right on the spot.
 - Walking round something big now keeps going round one side instead of changing its mind every step.

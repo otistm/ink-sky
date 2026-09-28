@@ -68,6 +68,7 @@ function landOn(k, descend) {
   SF.pl = pl; SF.objs = L.objs.filter(o => !dep.has(o.id)); SF.deco = L.deco; SF.first = first;
   SF.blocks = L.blocks; SF.pools = L.blocks.filter(b => b.k === 'pool'); SF.stand = L.blocks.filter(b => b.k !== 'pool');
   SF.pois = L.pois.map(o => Object.assign(o, { used: dep.has(o.id) }));
+  SF.goals = planetGoals(pl, L);
   SF.flocks = [];
   if (pl.fauna.length) for (let i = ri(RNG(pl.seed, 'birds'), 1, 2); i > 0; i--) SF.flocks.push(newFlock(true));
   SF.cr = [];
@@ -83,7 +84,7 @@ function landOn(k, descend) {
   SF.ship = { alt: descend ? 18 : 0, legs: descend ? 0 : 1, sq: 0, sqv: 0, phase: descend ? 'down' : 'rest', t: 0, flame: descend ? 1 : 0 };
   makePatterns(pl.ground);
   cam.z = camZoom(); cam.x = descend ? 0 : SF.p.x; cam.y = descend ? -11 : SF.p.y - 1;
-  S.mode = 'surface'; hudShow('surface'); $('boardBtn').hidden = true; hudPlanet(); updRes(); updMeters(true);
+  S.mode = 'surface'; hudShow('surface'); $('boardBtn').hidden = true; hudPlanet(); updRes(); updMeters(true); checkGoals(true);
   saveRun();
 }
 const lifeText = pl => pl.fauna.length ? plural(pl.fauna.length, 'species', 'species') : 'no life';
@@ -129,7 +130,7 @@ addEventListener('blur', () => { IN.keys = {}; });
 function setTarget(t) { SF.target = t; SF.work = 0; }
 const objHeight = o => (o.k === 'plant' ? SF.pl.flora[o.fl].h : OBJ_H[o.k]) * o.s;
 const crMid = c => c.sp.legLen + c.sp.bh * .5 + (c.sp.hover ? .5 : 0);
-const POI_H = { wreck: 2, pod: 1.5, monolith: 3.8, cave: 2.2 };
+const POI_H = { wreck: 2, pod: 1.5, monolith: 3.8, cave: 2.2, chart: .9 };
 function targetAlive(T) { return T.kind === 'obj' ? !T.o.gone : T.kind === 'drone' ? !T.o.dead : true; }
 function targetPos(T) { return T.kind === 'go' ? [T.x, T.y] : T.kind === 'ship' ? [0, 0] : [T.o.x, T.o.y]; }
 // the tallest part of each thing you walk round, for tapping its picture
@@ -183,8 +184,15 @@ function playerStep(dt) {
   if (kx || ky) { const m = Math.hypot(kx, ky); mx = kx / m; my = ky / m; }
   else if (IN.ptr && IN.ptr.drag) { mx = IN.jx; my = IN.jy; }
   let T = SF.target; if (T && !targetAlive(T)) { setTarget(null); T = null; }
+  // walk right up to a hidden star chart and you pick it up
+  { const c = SF.pois.find(o => o.k === 'chart' && !o.used && Math.hypot(o.x - p.x, o.y - p.y) < 1.8); if (c && p.alt < .3) foundChart(c); }
+  // nothing chosen: whatever you walk up to gets mined or scanned by itself
+  if (!T && p.alt < .3) { T = autoTarget(); if (T) setTarget(T); }
   let aim = null;
-  if (!mx && !my && T) {
+  if (T && T.auto) {
+    const [tx, ty] = targetPos(T), d = Math.hypot(tx - p.x, ty - p.y), reach = T.kind === 'creature' ? scanRange() : 2.4;
+    if (d > reach * 1.1 || p.alt >= .3) setTarget(null); else aim = work(T, dt);
+  } else if (!mx && !my && T) {
     const [tx, ty] = targetPos(T), dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy) || 1e-6;
     const reach = T.kind === 'creature' ? scanRange() : T.kind === 'drone' ? 9 : T.kind === 'obj' ? 2.4 : T.kind === 'ship' ? 3.4 : T.kind === 'poi' ? (T.o.k === 'cave' ? 1.6 : 2.8) : .35;
     const stop = T.kind === 'creature' ? scanRange() * .55 : T.kind === 'drone' ? 5 : reach * .85;
@@ -213,6 +221,7 @@ function playerStep(dt) {
   }
   if (aim) p.face = aim[0] >= p.x ? 1 : -1;
   const dc = Math.hypot(p.x, p.y);
+  if (dc > PLANET_R - 9) goalSet('far');
   if (dc > PLANET_R - 1) { p.x *= (PLANET_R - 1) / dc; p.y *= (PLANET_R - 1) / dc; if (S.t - SF.edgeT > 8) { SF.edgeT = S.t; hint('The ground is too rough to cross. Your ship can take you further.'); } }
 }
 // mining, scanning or shooting: returns the point the multitool aims at
@@ -246,12 +255,14 @@ function mined(o) {
   SF.alert += MINE_ALERT[o.k] * WATCH_F[pl.watch] * (1 - .5 * upL('hush'));
   if (o.k === 'shard' && pl.watch > 0 && SF.alert > .5 && !SF.drones.length) tipOnce('alert', 'The eye by your meters is the watchers. Mine too much and they come for you.');
   setTarget(null); updRes(res);
+  if (o.k === 'shard') goalBump('spire');
+  goalBump('harvest', res === (SF.goals.find(g => g.id === 'harvest') || {}).res ? n : 0);
 }
 function discover(sp) {
   const key = SF.pl.key; (G.scanned[key] = G.scanned[key] || []).push(sp.idx);
   G.inv.shard += SPECIES_PAY; G.stats.species++; save.species++; writeSave();
   setTarget(null); updRes('shard'); hudPlanet(); discToast(sp); saveRun();
-  if (namedOn(SF.pl) === SF.pl.fauna.length) setTimeout(() => { if (S.mode === 'surface' && !sheetOpen()) offerUpgrade(); else SF.owed = true; }, 1800);
+  checkGoals();
 }
 
 /* ---------- creatures ---------- */
@@ -314,6 +325,7 @@ function droneDown(d) {
   const [x, y] = toScreen(d.x, d.y - d.alt); floatAt(x, y, '+' + n + ' warp shards', true);
   setTarget(null);
   if (SF.drones.every(o => o.dead)) callout('Watchers down');
+  goalBump('watcher');
 }
 
 /* ---------- weather and your suit ---------- */
@@ -335,15 +347,16 @@ function hazardStep(dt) {
     SF.lowT = 18;
     hint(G.inv.sodium > 0 ? 'Your shield is low. Tap sodium to recharge it.' : 'Your shield is low. Mine sodium, the spiky bulbs, or shelter in a cave or by your ship.');
   }
-  if (SF.owed && !sheetOpen()) { SF.owed = false; offerUpgrade(); }
+  if (cave) goalSet('cave');
+  if (SF.owed && !sheetOpen()) { SF.owed = false; planetCharted(); }
 }
 function surfaceTips() {
   const p = SF.p, cost = takeoffCost();
-  if (save.tips.walk && G.crash && G.fuel < cost && G.fuel + G.inv.ferrite * FUEL_PER_FERRITE < cost && S.t > 6) tipOnce('mine', 'Tap a rock to mine ferrite. Your ship needs it to take off.');
+  if (save.tips.walk && G.crash && G.fuel < cost && G.fuel + G.inv.ferrite * FUEL_PER_FERRITE < cost && S.t > 6) tipOnce('mine', 'Walk up to a rock and you mine it. Your ship needs ferrite to take off.');
   if (G.crash && G.fuel + G.inv.ferrite * FUEL_PER_FERRITE >= cost && Math.hypot(p.x, p.y) > 6) tipOnce('board', "That's enough ferrite. Head back to your ship: the tag at the edge points the way.");
   const vis = (x, y) => { const [a, b] = toScreen(x, y); return a > 20 && a < W - 20 && b > 120 && b < H - 140; };
   if (save.tips.mine && SF.blocks.some(b => !b.walk && vis(b.x, b.y))) tipOnce('jet', 'Press and hold anywhere to fire your jetpack. Drag while you hold to fly over boulders, pools and trees.');
-  if (SF.cr.some(c => !(G.scanned[SF.pl.key] || []).includes(c.sp.idx) && vis(c.x, c.y))) tipOnce('scan', 'Tap a creature to scan it. Each new species pays 5 warp shards.');
+  if (SF.cr.some(c => !(G.scanned[SF.pl.key] || []).includes(c.sp.idx) && vis(c.x, c.y))) tipOnce('scan', 'Walk near a creature and you scan it. Each new species pays 5 warp shards.');
   if (SF.pois.some(o => !o.used && o.k !== 'cave' && vis(o.x, o.y))) tipOnce('poi', 'Wrecks and supply pods hold supplies, and monoliths have things to tell you. Tap one to go and look.');
   if (SF.pois.some(o => o.k === 'cave' && vis(o.x, o.y)) && WEATHER[SF.pl.wx].drain > 0) tipOnce('cave', 'Caves shelter you like your ship does. Stand in the mouth and your shield recharges.');
   if (SF.objs.some(o => o.k === 'shard' && vis(o.x, o.y))) tipOnce('spire', `Black spires hold warp shards. ${WARP_COST} build a warp cell, which jumps you to the next star.`);
@@ -400,8 +413,9 @@ function doScan() {
   if (S.mode !== 'surface' || SF.scanCool > 0 || SF.p.hidden || sheetOpen()) { nope($('scanBtn')); return; }
   SF.scanCool = 6; SF.pulse = { t: 0, x: SF.p.x, y: SF.p.y }; SF.tagUntil = S.t + 8; squash($('scanBtn'));
   const spires = SF.objs.filter(o => o.k === 'shard' && Math.hypot(o.x - SF.p.x, o.y - SF.p.y) < 60).length;
-  const left = SF.pl.fauna.length - namedOn(SF.pl), finds = SF.pois.filter(o => !o.used && o.k !== 'cave' && Math.hypot(o.x - SF.p.x, o.y - SF.p.y) < 70).length;
-  hint(`${spires ? plural(spires, 'shard spire') + ' nearby' : 'No shard spires nearby'}${finds ? ', and ' + plural(finds, 'place') + ' to look at' : ''}. ${!SF.pl.fauna.length ? 'Nothing lives here.' : left ? plural(left, 'species', 'species') + ' left to name here.' : 'Every species here is named.'}`, 5000);
+  const left = SF.pl.fauna.length - namedOn(SF.pl), finds = SF.pois.filter(o => !o.used && o.k !== 'cave' && o.k !== 'chart' && Math.hypot(o.x - SF.p.x, o.y - SF.p.y) < 70).length;
+  const chart = SF.pois.find(o => o.k === 'chart' && !o.used), cd = chart ? Math.hypot(chart.x - SF.p.x, chart.y - SF.p.y) : 0;
+  hint(`${spires ? plural(spires, 'shard spire') + ' nearby' : 'No shard spires nearby'}${finds ? ', and ' + plural(finds, 'place') + ' to look at' : ''}. ${!SF.pl.fauna.length ? 'Nothing lives here.' : left ? plural(left, 'species', 'species') + ' left to name here.' : 'Every species here is named.'}${chart ? (cd < CHART_SENSE ? ' A star chart is close by!' : ` A faint signal: a star chart is hidden on this world, ${cd < 45 ? 'not far off' : 'a long way out'}.`) : ''}`, chart ? 7000 : 5000);
 }
 
 /* ---------- HUD ---------- */
@@ -430,6 +444,7 @@ function updMeters(force) {
   $('psub').textContent = storm ? 'Storm! Find shelter' : namedText(SF.pl);
 }
 function updRes(bumpKey) {
+  if (SF.goals) updGoals(false);
   RES_KEYS.forEach(k => { $('n-' + k).textContent = G.inv[k]; });
   if (bumpKey) squash($('chip-' + bumpKey));
 }
@@ -472,7 +487,7 @@ function shadowW(it) {
   if (it.k === 'me') return .42 * (1 - SF.p.alt / 7);
   if (it.k === 'cr') return it.o.sp.bw * .5 * (it.o.sp.hover ? .7 : 1);
   if (it.k === 'block') { const b = it.o; return b.k === 'mesa' ? 0 : b.k === 'tree' ? 1.1 * b.s : 1.05 * b.s; }
-  if (it.k === 'poi') return { wreck: 2.6, pod: .75, monolith: .8, cave: 0 }[it.o.k];
+  if (it.k === 'poi') return { wreck: 2.6, pod: .75, monolith: .8, cave: 0, chart: .45 }[it.o.k];
   const o = it.o; return (o.k === 'rock' ? .85 : o.k === 'shard' ? .65 : o.k === 'sodium' ? .35 : .3) * o.s;
 }
 function localAim(p) {
@@ -493,7 +508,7 @@ function drawThing(it, t, LW) {
     if (b.k === 'boulder') drawBoulder(ctx, LW, b); else if (b.k === 'mesa') drawMesa(ctx, LW, b); else drawTree(ctx, LW, b, SF.pl.wx, t);
   } else if (it.k === 'poi') {
     const o = it.o, f = { t, used: o.used, sd: o.sd }; ctx.translate(o.x, o.y);
-    if (o.k === 'wreck') drawWreck(ctx, LW, f); else if (o.k === 'pod') drawPod(ctx, LW, f); else if (o.k === 'monolith') drawMonolith(ctx, LW, f); else drawCave(ctx, LW, f);
+    if (o.k === 'wreck') drawWreck(ctx, LW, f); else if (o.k === 'pod') drawPod(ctx, LW, f); else if (o.k === 'monolith') drawMonolith(ctx, LW, f); else if (o.k === 'chart') drawChart(ctx, LW, f); else drawCave(ctx, LW, f);
   } else if (it.k === 'cr') {
     const c = it.o; ctx.translate(c.x, c.y); drawCreature(ctx, LW, c.sp, { face: c.face, ph: c.ph, moving: c.moving, t });
   } else if (it.k === 'ship') {
@@ -612,7 +627,7 @@ function shipTag() {
 }
 function tagsDraw(t) {
   // what a place is, when you're standing near it
-  SF.pois.forEach(o => { if (o.used && o.k !== 'cave') return; if (Math.hypot(o.x - SF.p.x, o.y - SF.p.y) > 9) return; const [x, y] = toScreen(o.x, o.y - POI_H[o.k] - .6); pill(x, y, POI_NAME[o.k], false); });
+  SF.pois.forEach(o => { if (o.used && o.k !== 'cave') return; if (Math.hypot(o.x - SF.p.x, o.y - SF.p.y) > (o.k === 'chart' ? 5 : 9)) return; const [x, y] = toScreen(o.x, o.y - POI_H[o.k] - .6); pill(x, y, POI_NAME[o.k], false); });
   if (S.t > SF.tagUntil) return;
   ctx.save(); ctx.globalAlpha = clamp(SF.tagUntil - S.t, 0, 1);
   const p = SF.p, named = G.scanned[SF.pl.key] || [];
@@ -621,7 +636,7 @@ function tagsDraw(t) {
     if (!edgeTag(o.x, o.y - 1.5, 'Shards · ' + Math.round(d) + ' m', true)) { const [x, y] = toScreen(o.x, o.y - objHeight(o) - .3); pill(x, y, 'Warp shards', true); }
   });
   SF.pois.forEach(o => {
-    const d = Math.hypot(o.x - p.x, o.y - p.y); if (o.used || d > 70) return;
+    const d = Math.hypot(o.x - p.x, o.y - p.y); if (o.used || d > (o.k === 'chart' ? CHART_SENSE : 70)) return;
     if (!edgeTag(o.x, o.y - 1.5, POI_NAME[o.k] + ' · ' + Math.round(d) + ' m', false)) { const [x, y] = toScreen(o.x, o.y - POI_H[o.k] - .6); pill(x, y, POI_NAME[o.k], false); }
   });
   SF.cr.forEach(c => {
@@ -676,6 +691,7 @@ function walkBy(o, rad, dx, dy) {
 
 /* ---------- places to find ---------- */
 function usePoi(o) {
+  if (o.k === 'chart') { if (!o.used) foundChart(o); return; }
   if (o.k === 'cave') { hint('You shelter in the cave. Your shield recharges here.', 3500); return; }
   if (o.used) { hint(o.k === 'monolith' ? 'The monolith has nothing more to say.' : 'Nothing left here.', 3000); return; }
   o.used = true; (G.dep[SF.pl.key] = G.dep[SF.pl.key] || []).push(o.id);
@@ -686,7 +702,7 @@ function usePoi(o) {
   else got.shard = 10;
   const [x, y] = toScreen(o.x, o.y - POI_H[o.k]);
   Object.keys(got).forEach((k, i) => { G.inv[k] += got[k]; setTimeout(() => floatAt(x, y + i * 22, '+' + got[k] + ' ' + RES[k].name.toLowerCase(), k === 'shard'), i * 250); });
-  updRes(Object.keys(got)[0]); dust(o.x, o.y, 4, 2); saveRun();
+  updRes(Object.keys(got)[0]); dust(o.x, o.y, 4, 2); saveRun(); setTimeout(checkGoals, 900);
   if (o.k === 'monolith') {
     sheet(`<p class="evn">${SF.pl.name}</p><h2>A monolith</h2><p class="story">${MONOLITH[o.sd % MONOLITH.length]}</p><p>+10 warp shards</p><button class="btn" id="okBtn">Walk on</button>`);
     $('okBtn').onclick = closeSheet;
@@ -713,6 +729,7 @@ function jetStep(dt) {
   if (q && !q.drag && !q.jet && performance.now() - q.t > JET_HOLD * 1000) { q.jet = true; setTarget(null); }
   const want = (q && q.jet) || k.Shift || k.j;
   p.jetting = want && !SF.jetEmpty && SF.jet > 0;
+  if (p.alt > .5) { const b = blockAt(p.x, p.y, 0); if (b && b.k === 'mesa') goalSet('cliff'); }
   if (p.jetting) {
     if (p.alt === 0) { dust(p.x, p.y, 3); p.vz = 3; tipOnce('jetDone', 'Your jetpack refills once you land. Watch the gauge beside you.', 5000); }
     SF.jet = Math.max(0, SF.jet - JET_BURN * dt); p.vz += 26 * dt; SF.jetRest = 0;
@@ -738,4 +755,57 @@ function jetGauge() {
   rrect(ctx, x, y - h / 2, w, h, 4); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#000';
   if (SF.jetEmpty) ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
   const f = (h - 4) * SF.jet / 100; ctx.fillStyle = '#000'; ctx.fillRect(x + 2, y + h / 2 - 2 - f, w - 4, f);
+}
+
+/* ---------- mining and scanning by themselves ---------- */
+// an unnamed creature within scanning range comes first (they wander off); otherwise the nearest thing within reach
+function autoTarget() {
+  const p = SF.p, named = G.scanned[SF.pl.key] || [], sr = scanRange();
+  let best = null, bd = 1e9;
+  SF.cr.forEach(c => { if (named.includes(c.sp.idx)) return; const d = Math.hypot(c.x - p.x, c.y - p.y); if (d < sr && d < bd) { bd = d; best = { kind: 'creature', o: c, auto: true }; } });
+  if (best) return best;
+  SF.objs.forEach(o => { if (Math.abs(o.x - p.x) > 3 || Math.abs(o.y - p.y) > 3) return; const d = Math.hypot(o.x - p.x, o.y - p.y); if (d < 2.2 && d < bd) { bd = d; best = { kind: 'obj', o, auto: true }; } });
+  return best;
+}
+
+/* ---------- each planet's goals ---------- */
+const goalRec = key => (G.goals[key] = G.goals[key] || { done: [] });
+// how far along a goal is, on any planet (the star chart asks too)
+function goalHave(pl, g) {
+  if (g.id === 'species') return namedOn(pl);
+  if (g.id === 'finds') return (G.dep[pl.key] || []).filter(id => id >= 1000 && id < CHART_ID).length;
+  return (G.goals[pl.key] || {})[g.id] || 0;
+}
+function goalBump(id, n = 1) { if (!n || !SF.goals.some(g => g.id === id)) return; const r = goalRec(SF.pl.key); r[id] = (r[id] || 0) + n; checkGoals(); }
+function goalSet(id) { const r = goalRec(SF.pl.key); if (r[id] || !SF.goals.some(g => g.id === id)) return; r[id] = 1; checkGoals(); }
+function checkGoals(quiet) {
+  const pl = SF.pl, rec = goalRec(pl.key); let fresh = null;
+  SF.goals.forEach(g => { if (!rec.done.includes(g.id) && goalHave(pl, g) >= g.need) { rec.done.push(g.id); fresh = g; } });
+  updGoals(fresh && !quiet);
+  if (fresh && !quiet) setTimeout(() => callout('Goal done', fresh.text), 700);
+  if (!quiet && rec.done.length === SF.goals.length && !G.charted[pl.key]) {
+    G.charted[pl.key] = 1; G.stats.charted = (G.stats.charted || 0) + 1;
+    setTimeout(() => { if (S.mode === 'surface' && !sheetOpen()) planetCharted(); else SF.owed = true; }, 2200);
+  }
+  saveRun();
+}
+// the goal bar under the meters: the next thing to do, and how many are done
+function updGoals(bump) {
+  const gs = SF.goals, rec = goalRec(SF.pl.key), next = gs.find(g => !rec.done.includes(g.id)), bar = $('goalBar');
+  $('goalN').textContent = `${rec.done.length}/${gs.length}`;
+  $('goalT').textContent = next ? next.text + (next.need > 1 ? ` · ${Math.min(goalHave(SF.pl, next), next.need)}/${next.need}` : '') : 'Planet charted ✓';
+  bar.classList.toggle('done', !next);
+  if (bump) squash(bar);
+}
+
+/* ---------- the hidden star charts ---------- */
+function foundChart(o) {
+  o.used = true; (G.dep[SF.pl.key] = G.dep[SF.pl.key] || []).push(o.id);
+  if (!G.charts.includes(G.sys)) G.charts.push(G.sys);
+  dust(o.x, o.y, 5, 2); saveRun();
+  const n = G.charts.length, all = J().stars, done = n >= all;
+  sheet(`<p class="evn">${SF.pl.name}</p><h2>A star chart</h2>${chartPips()}
+    <p class="story">${done ? 'That was the last one. The charts fit together into a map of a galaxy nobody has seen.' : 'A scrap of a much bigger map. It shows stars you have never heard of.'}</p>
+    <p>${n} of ${all} found.${done ? ' Reach the core and you can travel on to a new galaxy.' : ' Every star hides one.'}</p><button class="btn" id="okBtn">Keep exploring</button>`);
+  $('okBtn').onclick = closeSheet;
 }

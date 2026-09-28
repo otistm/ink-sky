@@ -15,3 +15,4 @@ function RNG(...parts) {
 }
 const ri = (r, a, b) => a + Math.floor(r() * (b - a + 1));
 const pick = (r, arr) => arr[Math.floor(r() * arr.length)];
+const plural = (n, w, ws) => n + ' ' + (n === 1 ? w : (ws || w + 's'));
